@@ -24,7 +24,8 @@ workflows:
         - push
       branch_patterns:
         - pattern: '*'
-      cancel_previous_builds: true
+          include: true
+          target: true
     scripts:
       - |
         # set up key.properties
