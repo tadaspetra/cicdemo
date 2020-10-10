@@ -6,7 +6,23 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'master'
+      cancel_previous_builds: true
     scripts:
+      - echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
+      - flutter packages pub get
+      - name: Unit tests
+        script: |
+          flutter test --machine > test-results.json
+        test_report: test-results.json
       - |
         # set up debug keystore
         rm -f ~/.android/debug.keystore
