@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Trigger 5',
+      title: 'Flutter Trigger 6',
       theme: ThemeData(
         // This is the theme of your application.
         //
