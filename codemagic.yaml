@@ -13,7 +13,7 @@ workflows:
         - push
       branch_patterns:
         - pattern: 'master'
-      cancel_previous_builds: true
+      cancel_previous_builds: false
     scripts:
       - echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
       - flutter packages pub get
