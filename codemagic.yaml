@@ -26,29 +26,31 @@ workflows:
         - pattern: '*'
       cancel_previous_builds: true
     scripts:
+      - echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
+      - flutter packages pub get
+      - name: Unit tests
+        script: |
+          flutter test --machine > test-results.json
+        test_report: test-results.json
       - |
-        # set up key.properties
-        echo $CM_KEYSTORE | base64 --decode > /tmp/keystore.keystore
-        cat >> "$FCI_BUILD_DIR/android/key.properties" <<EOF
-        storePassword=$CM_KEYSTORE_PASSWORD
-        keyPassword=$CM_KEY_ALIAS_PASSWORD
-        keyAlias=$CM_KEY_ALIAS_USERNAME
-        storeFile=/tmp/keystore.keystore
-        EOF
+        # set up debug keystore
+        rm -f ~/.android/debug.keystore
+        keytool -genkeypair \
+          -alias androiddebugkey \
+          -keypass android \
+          -keystore ~/.android/debug.keystore \
+          -storepass android \
+          -dname 'CN=Android Debug,O=Android,C=US' \
+          -keyalg 'RSA' \
+          -keysize 2048 \
+          -validity 10000
       - |
         # set up local properties
         echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
       - cd . && flutter packages pub get
-      - cd . && flutter build appbundle --release
+      - cd . && flutter build apk --debug
       - find . -name "Podfile" -execdir pod install \;
-      - keychain initialize
-      - app-store-connect fetch-signing-files "$(xcode-project detect-bundle-id)"
-        --type IOS_APP_DEVELOPMENT --create
-      - keychain add-certificates
-      - cd . && flutter build ios --release --no-codesign
-      - xcode-project use-profiles
-      - cd . && xcode-project build-ipa --workspace "ios/Runner.xcworkspace" --scheme
-        "Runner"
+      - cd . && flutter build ios --debug --no-codesign
     artifacts:
       - build/**/outputs/**/*.apk
       - build/**/outputs/**/*.aab
@@ -60,9 +62,3 @@ workflows:
       email:
         recipients:
           - connectwithamateur@gmail.com
-      google_play:
-        credentials: Encrypted(Z0FBQUFBQmZnYmJ0YUtfbWZobFJLSzNXTHZrbmNPZzNhWW10TmktNFFORFJjQ1ZaMFNnTnpTaG4tampWdnk0UW82V01lbTdhdlNXWVRyczdUZXNXdlNzSVZIUHcxWjRmS0daRWYxd0lMUEVnbExhUHI5QTl2RzRKYkxyd0s1N2J5TkoxVVB4dVMzLS1peUJSZEx1OXBOYlJ6aWoySXRtWVg5UTJFRUd3aWdLS3ZLWXI4bmxXLU5jYVNaR0g3UFh6eElkM0dxWUEwWldGRnFLd3RhbDM3cmxYdjFsMFZIUFUxdzFNdTZZM1ZHdTUwU2w5aXN3c1V0aFE3S3lfZUpWNklMbXI3S05CTkNyTDk2S2hIaE9SOTM0MUhyZFg3aGZIM3VsZnJHanJOaHV2clJhbW9wdGFhbDB2Mk10YXVPeWhIcmE2RjZCOTdySTVQMFpLZjFGa21RZUlDN1BDLTAwT3BfekJOQ3Q4M2pxSzNLb2lSRUJWMVpKeVZiNXdIS1hqdHRBMmZmSEgzYWJxcGE4UXlpMW1Nbk5fQ2JGSElsTi1DWTJFS1I4ellsNjE2RUJHdmtlcUZpdDNjRlJid3hrSG85aDJ2b2RJZjc5QmNtcVpRbm9SdEY1RHVkdmRVRXozWE84OXBnWUctQnpneHF5cW9MekY2M0FwWkxFWllad01MS1p6ZDZBQVZ5MEx2WW9MdW1ydDNSZmtoZ3IyQTRFdWFwU0JOTi1jQ3l5QUYxSFl5UjZNNTNGN3lXWHpIYU9TSDVwaXRjUTcydjNRRkNlTWo2elN5TzY5cE9rbTdoUDZITjlnaHRTajVUbGp5RVhkS0hReGdfbFYwMzU5ekpqR1FZMkpGTTZXOGYxYzZjMkNxSld0d1kzaG92YXVVT2dTQWEyVUFDc1pZRUVFbGw5STZBeXpuamg5bXNKRC1NMWtlZldIeXRfQTJlMHJRcncyNWEycjIwZElVTVI0LVpyYk1aMnZEMk5LZkhKeXl3N0s0RkNIMEpndl9qZU1GcEJkYXdkZWxLNFNvcjBiZE5wSmlFODItZ3FLSGlKbTVVRTd3NzRYcjFSSnpwbHJ5OXZxaldhMkxtSmQ3by1jNExid3kzc1RRcFpyZi1uMXd0eGd6a0hLYVNybVpsdzdLWkdlNFUtcUloS01kbGdnX09ub2JUWTRjdEtvNDF2b0NDVDg4OWlUM19NWE84NXpSZVF2TEl2ZTZuRnc1N2J3VHRZWmV5UkpnekdHU1ZnbUhMOFNmeTV0OUd0dk9CdUY4RTM5RnExUjgxSmNsYnotalJOemJMZGw2aEpYZ0phd2gwaHdSRlpEaGoyV2g2aGkzMXh5bzItUjEzeW1TWmE3c2NxaHlCaExDZ0VNa2tnT2RLRG9MVGxQQm5TYVZBVllvTnFmaUJXNW54eHJ3TVBIYjZxakNKdXRhODVZeDVsUmlqanp5Y1JYZTJqcENnU205N2dsU016V3p3SkJLQXhXenpPOVpDVHBSYmZqc1VyU2NRTW1OdVdfci1iaHJoUzNSQ0NnMFp1SGF0R2dnbUZ6QWcyTHZ4MEJSWWhjZVZ4cFc4SVZOTWl6OVI5VUFLQkNGY0JsQkt0OGM5MTNzSHlMbjlGOEc2clY4LWt2bEdDWmZ6bWZZODZTUzlkeEtkY0VEQVlwZWQwVXNydEdnR3FHRVhfS2ZsOWhaTzlQUnVzbVhuQmxHT0hvXzhrcURnck1kZ0lyaUJQcTdJWi1MNnJ0YUowZXdXM3dST1dpYnVGYnhoZHcyWm9TcXZPSVRObUdkcXFuY05TdmVTX3psTkJSRjNFMUlkYURCckpPZkNLMGpZeFpHbUNSRExGWkxQRGxNR0piVXVta3hGMGlaQjNUa1VKcFJoa0MxY2ZaUV9nLUtkMGNPVjg0MDJsTUVIZ25mWUN1VlhVYzVhSUJBVkZZVkdNOU1GSDZOQnNsZjlaRDBORkdha1U2Y0JYblFJUjVtYnZxcEU2d2poX0ozU0Myb0oxaHBGTGJvYWtMNjRsS3NNYldqRHZuR3NINkJPRDZwMU1FR0FwRHlFNkpJZElnUnJJQ1ZYcHVTOUVlQ1hjOTIwazI1LS1vaS1MS1Z2UzkzTFd6VUNzVld2NzlxQVAyUkR4RnZmVlVQWmx6UHhUNmpLZ0FjWjhZTjZPN3h4VV9BU3ZDX2RRejNKWXpVMXNmdlBKV2tyUTJpWVA0Ml9qeXZfMmtNVk1IT1RWY3g1dDZJdXE1ZFZfRUNneFBjOEI2VlIyblpOYXFtOXo5a09SeUI1bFFxaDJZY0wxX2J5c3pRcXlwRHRmU1kwXzlZQ0VKdTVBcG9fYzU4aUZudzJ2ejZQUHR0RjBsdDlmWDlIZ0FCeVFvRDNCRTMzMjNjbFRHWjhfLVpPZjMwRXFVenY5dzJ5bUpEanVvM09RYkZGSWNUQ0Q5OXo2SnZkalg1c2hGU0sxZ2U2UG9YeXNOalNWSXVlTmIxSlNidF9pUEZmcGdlOTF6LVRJdEdpb3Q1eDg1Z1YyQmtiQllmRG55MWlHV2ZmVk8zWmRRaWg5RWRlS1lwODVXeGxQTGdpTnZzWmgzeW9abWE5bFBBRUpvTUg5RUxNWl9oakphZDZIWnNWMnZ0MV9XVEhQaFpWS3V6d0xLdTZ3emVBdDZkMnpOT0ZMY3dxaG54cUszWjBsWGRWdFQxemFBMDRYNGxCa2dQVEVGUV9uT284TUlyOXFFRXVMNGlUUVN2XzFWa191dVNTQ1pHUFd4ZFE5elJmaG5NRUl2WWhEZnMzck5Bc3RwRjliQnZiZUVMcktKemNhVC1nWmE5T3pEcVNIZDVEVjZOeVpxcWRuX1ZvRnZfMmlEX2xJVnVpbWtZWU4xYnR1NUdPOWlveWcyT1NtYkdZV1U0TkFBcmlKQmk3Y2lMTmM0YzJUdXZTSnFCaldnS1kyMTV5TnVLN3VmdkZPYlNHbWlhLUV6cU8xX2E4aUxic2hBbHVqYm9zaVFOY3dET0ZselNPU1czOHVKRzlZTUVxcWw1ZUdwZXgyUEE3M01zTXlodXIzQ2ZQZFdmcGpJRWRqdnI1UU1CRmg0N0g3aDlvVE0xcGZyWmMzMEQyb1huc3NZZGRxVnRwSC1PQVZQMjFuS05pMXZnZUJUbC1pTUt6U1FVVHRrY0Z2TzlySDNkeUJIbDRyUXQxeWdoVEJtMUs5SFJlVTJHTVRFeVViWWVDQmNTdTZDczY0YWtwSmpuRVlqMHlORnNGMWZ0SDRqNXVMcFVmanB3WGJ3OFhTOEplanlZVS1YaGxiUEtsR1U4OFJvWHktb1FPUWJQZ2FjMU5ocVVSWVd1OFBEZUlUWmhjdjB2bWduQ2RuemtZUDFjTGUwdEluRDE1LVEzeXRZaFhqNzlmYmVmVFhJd19HbGJ6RE1aS0tBeFEwbUtvOWJHZTJNU1ZzQk1tMG9Eb0NxSzFvTy1LaDBhZHZaNVFna0ZyN2VsYWd5dUhjeVpMTi14Y2tRM0dnS2c3aTFmVEJhQ05aaXhMNERSOWFfbFhBVkw0VVM3UFFORHdBVFpucy04dlEtc3NQTU1qUU1FYVJjRHJGTkxKTmtoVmVHbEpXSF80VHcwS2NzVnNyTXlLZHNpV2JtQnlhQ1o5aHVfdEI5TU1kZGc4YmlaMFpzVThmTFFLeTdYR3dlWlgyN1VuaDJpMDdaQ2J3WUZOVjI4SnFpOUxPRW44N05lQ2k1RlZncGZXTERXYzRQZTNUd2NkV2QtcU9FaUtPRk8yOTh4b0k3aDR1YjMxcVZ4cFVBWDcwUzRQMENJVzV1V2F2TjhoTjJEYkZZakZfU2x1R3c5SlN6WmlCYVRXM1JFLVcxM1puUjAteUlIeWR4My1UQlBnSkFDWWN5ZmtNMVViNHNCV09Relp5Y0doSEFWeWFKNW83UzlKV1JGRHpORDhOaUxtaGhKMjBYWXgtY2JVRERHdnVhM184MXYyY25KVmlrdDk4bmt6QWJBYldoSjJKM2FJZXl2bTZJN2FMNmVPYVZVNjVkZ2FKWjdpbjJCQkFleUpBSVlSTkttODlVUGpCdHh5Qm5WQ2hCWExTcHFqY2FHWk9ROUM0VWJOXzZ0aVZTMzVRcXllaDRzdkdfaDVEXzhUTUdsaXVJSTMxajczVndIUVNPQWxZVkl2U3pGdGxsWm9TcUxyYnY0WGI3Z2xUMXhpR2NGSmJ6QUZJay15alFLQ1dUeXlTenJwOEpkNTgtVUJON1dRSzFjNF9IYjh2TTY3bXd4R21mdENxbUJ3alNucWczaVh3VVFOaTlRYnZtQUxKNjRPVkh0OFVrZ3pPNFFnPT0=)
-        track: beta
-      app_store_connect:
-        apple_id: tpetraitis96@gmail.com
-        password: Encrypted(Z0FBQUFBQmZnYmJ1MzQ5b183WkJ5ckpSRjFZQzljalBWaXpJVThpS3N4d3RJeHgzT3RWMTlmRTZSSFVYNGhiYVlldjhtOXA0U0V5emlLOUt6S3N3cS1sdEhjODVrc0JVbWUtMGdPWVFQcGtxa0NKckp1VllQQ1U9)
