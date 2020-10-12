@@ -23,7 +23,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: '*'
+        - pattern: 'master'
           include: true
           target: true
     scripts:
