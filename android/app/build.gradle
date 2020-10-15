@@ -25,6 +25,13 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+
 android {
     compileSdkVersion 29
 
@@ -38,18 +45,48 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.example.cicdemo"
-        minSdkVersion 16
+        applicationId "com.cicdemo.cicdemo"
+        minSdkVersion 21
         targetSdkVersion 29
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
 
+signingConfigs {
+        file(rootProject.file('key.properties')).with { propFile ->
+            if (propFile.canRead()) {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }}
+            else {
+                print('not signed')
+            }
+        }
+    }
+
     buildTypes {
         release {
+            file(rootProject.file('key.properties')).with { propFile ->
+                if (propFile.canRead()) {
+                    // because we can read the keystore
+                    // we are building locally
+                    // so sign locally
+                    // otherwise build an unsigned apk for later signing by the CI/CD provider
+                    signingConfig signingConfigs.release
+                }
+            }
+
+            applicationVariants.all { variant ->
+                variant.outputs.all { output ->
+                    output.outputFileName = "app-release.apk"
+                }
+            }
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.debug
+//            signingConfig signingConfigs.release
         }
     }
 }
