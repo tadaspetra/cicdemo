@@ -15,6 +15,10 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/.gradle/caches
     triggering:
       events:
         - push
@@ -35,9 +39,6 @@ workflows:
       - name: set up local properties
         script: |
           echo "flutter.sdk=$HOME/programs/flutter" > "$FCI_BUILD_DIR/android/local.properties"
-      - name: testing
-        script: |
-          flutter test
       - name: build android
         script: |
           flutter packages pub get
